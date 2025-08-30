@@ -1,0 +1,17 @@
+com\insurai\ransomguard\YaraScanner$Result.class
+com\insurai\ransomguard\ThreatEvent$Severity.class
+com\insurai\ransomguard\MonitorService$FileAction.class
+com\insurai\ransomguard\BackupManager.class
+com\insurai\ransomguard\MonitorService$Listener.class
+com\insurai\ransomguard\ProcessManager.class
+com\insurai\ransomguard\MonitorService$1.class
+com\insurai\ransomguard\MonitorService$FileEvent.class
+com\insurai\ransomguard\MainApp$1.class
+com\insurai\ransomguard\EntropyUtil.class
+com\insurai\ransomguard\YaraScanner.class
+com\insurai\ransomguard\DetectionEngine$ThreatListener.class
+com\insurai\ransomguard\MonitorService$AttackControlListener.class
+com\insurai\ransomguard\MainApp.class
+com\insurai\ransomguard\ThreatEvent.class
+com\insurai\ransomguard\MonitorService.class
+com\insurai\ransomguard\DetectionEngine.class
