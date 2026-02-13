@@ -24,6 +24,23 @@ The entire flow is orchestrated by the MainApp class, which also hosts the JavaF
 
 This loose coupling via listener interfaces and event objects makes the system easy to extend, debug and reason about while keeping different concerns (monitoring, detection, response, UI, simulation) cleanly separated.
 
+## User Interface
+
+The application features a modern dark-themed dashboard built with JavaFX, providing immediate visibility into system status, real-time activity, threat logs, simulation controls, and response statistics.
+
+![RansomGuard Dashboard](screenshots/ransomguard-dashboard.png)
+
+*Key interface elements:*
+
+- Folder selection and monitoring start/stop controls  
+- Real-time encryption events timeline chart  
+- Live security log feed with clear button  
+- Attack simulation and process termination buttons  
+- System status indicators (Monitoring • Simulation • Connection)  
+- Quick counters for Encrypted / Decrypted / Backed Up files  
+- Tabbed views of Backup Files, Encrypted Files, and Decrypted Files  
+- Decrypt and Refresh actions
+
 ## Implemented Detection Axes
 
 | Axis                     | Method                              | Rationale / Trade-off                                      |
@@ -42,7 +59,7 @@ This loose coupling via listener interfaces and event objects makes the system e
 
 ## Simulation Environment
 
-A built-in, clearly labeled simulation mode encrypts .txt files using fixed-key AES-128-ECB (demonstration only), writes changes that trigger the real detection pipeline, and allows studying the end-to-end flow: monitor → detect → backup → alert → contain. It includes a decrypt function for recovery validation.
+A built-in, clearly labeled simulation mode encrypts `.txt` files using fixed-key AES-128-ECB (demonstration only), writes changes that trigger the real detection pipeline, and allows studying the end-to-end flow: monitor → detect → backup → alert → contain. It includes a decrypt function for recovery validation.
 
 ## Technology Choices
 
