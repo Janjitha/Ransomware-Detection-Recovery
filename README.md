@@ -1,83 +1,83 @@
-# RansomGuard
+# RansomGuard — Behavioral Ransomware Detection & Containment Prototype
 
-Real-time file system monitoring tool with basic ransomware-like behavior detection and response features
+**Intentional minimal prototype exploring real-time behavioral detection, multi-signal fusion, and automated first-response patterns for ransomware-like threats.**
 
-## What this project does
+## Purpose & Scope
 
-RansomGuard is a Java desktop application that:
+RansomGuard is a deliberately scoped, single-process prototype built to study real-time filesystem event processing in Java, experiment with combining lightweight behavioral, statistical and signature-based signals, implement safe, controlled simulation of encryption-like behavior, practice automated containment decisions (backup → quarantine → process intervention), and create a visual feedback loop for detection and response validation.
 
-- Watches a chosen folder for file create/modify events
-- Calculates file entropy to detect possible encrypted content
-- Runs YARA rules against new/modified files (if YARA is installed)
-- Creates timestamped backup copies before suspicious changes
-- Has a simple simulation mode that encrypts files in the monitored folder using hardcoded AES
-- Shows alerts when many files appear to be encrypted quickly
-- Can attempt to kill the most CPU-heavy process when mass encryption is detected (simulation mode)
-- Moves suspicious files to a quarantine folder
+The design consciously favors understandability, modularity and debuggability over breadth of coverage — a common starting point when building and reasoning about endpoint detection mechanisms.
 
-**Important**: This is an **educational / demonstration project**.  
-It is **not** production-grade ransomware protection software.
+## Architectural Overview
 
-## Current main detection methods
+The system follows a layered, event-driven architecture with clear separation of responsibilities.
 
-1. Suspicious file extensions (very limited list)
-2. High file entropy (>7.5 bits/byte)
-3. Very basic YARA rule matching (one rule looking for ransom note keywords and common extensions)
-4. Counting how many suspicious files appear in a short time window (default: 10 in 5 seconds)
+At the lowest level, the MonitorService uses Java's NIO WatchService to observe a single directory for file creation, modification and deletion events in real time. It runs in a dedicated single-threaded loop and forwards every relevant filesystem event into a processing pipeline.
 
-## Features that actually work in the current version
+These events are received by the DetectionEngine, which applies multiple independent detection methods in sequence: Shannon entropy calculation on file content, evaluation against a small set of known ransomware-related file extensions, and — when configured — external YARA rule matching via process execution. Suspicious findings are wrapped into typed ThreatEvent objects carrying severity, message, affected path and optional metadata.
 
-- Folder monitoring using Java WatchService
-- Shannon entropy calculation on file content
-- Very simple YARA integration via external yara64.exe process
-- Timestamped backup copies (debounced)
-- Move files to quarantine folder
-- Graphical interface using JavaFX showing:
-  - Threat/log messages
-  - Simulation controls
-  - Basic activity chart
-  - Top CPU processes list
-- Simulation mode that:
-  - Encrypts .txt files with fixed AES-128-ECB key
-  - Decrypts them again
-  - Triggers the detection & response logic
+Threat events are propagated to interested listeners, including the user interface and response components. The BackupManager listens for potentially dangerous events and — if the file still exists — creates a timestamped backup copy (with per-file debouncing to avoid redundant copies during rapid changes).
 
-## Technologies used
+When mass-modification behavior is detected (configurable threshold, currently ≥10 suspicious events in 5 seconds), the system escalates to high-severity alerts and offers automated containment actions. The ProcessManager uses OSHI to enumerate running processes and provides the ability to terminate the currently highest-CPU-utilizing process (used mainly in simulation scenarios). Suspicious files can be atomically moved into a quarantine directory.
 
-- Java 17
+The entire flow is orchestrated by the MainApp class, which also hosts the JavaFX-based user interface (threat feed, real-time activity chart, simulation controls, top processes list) and runs the optional encryption/decryption simulation in a separate thread with an explicit stop callback.
+
+This loose coupling via listener interfaces and event objects makes the system easy to extend, debug and reason about while keeping different concerns (monitoring, detection, response, UI, simulation) cleanly separated.
+
+## Implemented Detection Axes
+
+| Axis                     | Method                              | Rationale / Trade-off                                      |
+|--------------------------|-------------------------------------|-------------------------------------------------------------------|
+| Content randomness       | Shannon entropy ≥ 7.5 bits/byte     | Fast, stateless signal; effective against bulk encryption         |
+| Known patterns           | YARA rule evaluation (external)     | Industry-standard format; allows future rule tuning               |
+| File naming convention   | Extension suffix matching           | Low-latency pre-filter; intentionally small list in prototype     |
+| Behavioral velocity      | ≥10 suspicious events / 5 seconds   | Simple rate-based trigger; tunable; avoids needing long history   |
+
+## Containment & Response Primitives
+
+- Versioned snapshots — timestamped copies created before suspicious write (60 s debounce per file)
+- Atomic quarantine — move to isolated directory on high-confidence events
+- User-mediated termination — highest-CPU process kill offered after mass-event trigger (via OSHI + ProcessHandle)
+- Simulation kill switch — explicit callback to stop encryption thread when containment is confirmed
+
+## Simulation Environment
+
+A built-in, clearly labeled simulation mode encrypts .txt files using fixed-key AES-128-ECB (demonstration only), writes changes that trigger the real detection pipeline, and allows studying the end-to-end flow: monitor → detect → backup → alert → contain. It includes a decrypt function for recovery validation.
+
+## Technology Choices
+
+- Java 17 — records, pattern matching, modern concurrency primitives
+- JavaFX 21 — responsive UI with charts and modal dialogs
+- OSHI — cross-platform process & resource visibility
+- Apache Commons IO — robust file operations
+- YARA — de-facto standard for pattern matching (CLI integration stage 1)
+- Maven — reproducible builds & dependency management
+
+## Current Scope Boundaries & Next-step Considerations
+
+| Aspect                     | Current Prototype State                          | Architectural / Engineering Trade-off & Next-step Direction |
+|----------------------------|--------------------------------------------------|---------------------------------------------------------------------|
+| Cryptographic operations   | Fixed key, ECB (simulation only)                 | Isolation of demo crypto; future: per-file keys + KMS-like concept  |
+| YARA integration           | External process spawn                           | Fast to prototype; next: evaluate JNA/JNI or pure-Java alternatives |
+| Directory scope            | Single folder, non-recursive                     | Simplicity & performance; next: recursive + exclusion patterns      |
+| Alerting                   | GUI modal + log feed                             | Immediate feedback; next: async channels (email/webhook/SIEM)       |
+| Process attribution        | Highest CPU% (simulation convenience)            | Minimal viable signal; next: parent chain + command-line analysis   |
+| Persistence                | In-memory only                                   | Zero state for easy testing; next: lightweight event journal        |
+| Tuning & false-positive mgmt | Hardcoded thresholds                             | Focus on mechanism over optimization; next: scoring + whitelisting  |
+
+These boundaries are intentional for a first working version — they keep the codebase small, readable and easy to reason about while still exercising meaningful detection and response patterns.
+
+## Build & Run (Windows-focused development)
+
+**Prerequisites**
+
+- JDK 17+
 - Maven
-- JavaFX 21 (GUI + charts)
-- OSHI (system & process information)
-- Apache Commons IO & Compress
-- Logback (logging – partially configured)
-- YARA (external CLI – not embedded)
-
-## Important limitations & warnings
-
-- Uses **very weak** detection logic → many false negatives & false positives
-- Simulation uses fixed, hardcoded AES key (1234567890123456)
-- Kills highest-CPU process without real validation (dangerous in real use)
-- YARA integration depends on external yara64.exe being installed and path being correct
-- No digital signature verification
-- No network protection
-- No memory/process injection detection
-- No real decryption key management
-- Not suitable for protecting real important data
-
-## How to run (Windows – most tested environment)
-
-### Requirements
-
-- Java 17 JDK
-- Maven
-- YARA installed (chocolatey: `choco install yara`)
-  or manually place yara64.exe and update path in `YaraScanner.java`
-
-### Steps
-
-1. Clone or download the project
-2. Open terminal in project folder
-3. Build:
+- YARA CLI (`choco install yara` recommended)  
+  → adjust `YARA_PATH` in `YaraScanner.java` if necessary
 
 ```bash
 mvn clean compile
+mvn javafx:run
+# or
+mvn exec:java
